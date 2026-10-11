@@ -1,0 +1,38 @@
+name: Sync upstream
+
+# Fast-forwards this fork's `main` to mattpocock/skills `main` every day.
+# Fast-forward only: if the fork has commits upstream lacks, the job fails
+# instead of overwriting them, so nothing of yours is ever lost.
+# Runs only on the fork, never on upstream itself.
+#
+# Setup: pushing upstream changes that touch `.github/workflows/` is rejected
+# for the default GITHUB_TOKEN. Add a repo secret `SYNC_TOKEN` (a PAT with
+# `contents: write` and `workflow` scopes) so those syncs go through.
+# Scheduled workflows are off by default on forks: enable them in the Actions tab.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  sync:
+    if: github.repository != 'mattpocock/skills'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Fast-forward main to upstream
+        run: |
+          git remote add upstream https://github.com/mattpocock/skills.git
+          git fetch upstream main
+          git merge --ff-only upstream/main
+          git push origin main
